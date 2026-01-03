@@ -2,40 +2,23 @@ package cmd
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"log"
+
+	"github.com/SumirVats2003/go-todo/internal"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-type App struct {
-	Db *sql.DB
-}
-
-func InitApp() App {
+func InitApp() *sql.DB {
 	db, err := sql.Open("sqlite3", "./data/todos.db")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	app := App{Db: db}
-	defer db.Close()
-	initDbSchema(db)
+	internal.InitDbSchema(db)
 
-	return app
-}
+	// TODO: Assign the return value to a variable to use further in the app
+	internal.InitRepository(db)
 
-func initDbSchema(db *sql.DB) {
-	sqlStmt := `CREATE TABLE IF NOT EXISTS todos(
-		id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL,
-		content TEXT,
-		completed INTEGER NOT NULL,
-		createdAt INTEGER NOT NULL
-	)`
-
-	_, err := db.Exec(sqlStmt)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Table todos is ready to go!")
+	return db
 }
