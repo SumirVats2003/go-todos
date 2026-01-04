@@ -17,8 +17,8 @@ func InitApp() *sql.DB {
 
 	internal.InitDbSchema(db)
 
-	// TODO: Assign the return value to a variable to use further in the app
-	internal.InitRepository(db)
+	repo := internal.InitRepository(db)
+	InitTeaApp(repo)
 
 	return db
 }
