@@ -1,109 +1,104 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
-	"strings"
 
 	"github.com/SumirVats2003/go-todo/internal"
-	"github.com/SumirVats2003/go-todo/internal/model"
-	"github.com/charmbracelet/bubbles/cursor"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle         = focusedStyle
-	noStyle             = lipgloss.NewStyle()
-	helpStyle           = blurredStyle
-	cursorModeHelpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-
-	focusedButton = focusedStyle.Render("[ Submit ]")
-	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
+	borderStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 )
 
-type todoApp struct {
-	width      int
-	height     int
-	todos      []model.Todo
-	repo       internal.Repository
-	inputs     []textinput.Model
-	cursorMode cursor.Mode
+type model struct {
+	width  int
+	height int
 }
 
-func initialModel() todoApp {
-	a := todoApp{
-		inputs: make([]textinput.Model, 2),
-	}
-
-	var t textinput.Model
-	for i := range a.inputs {
-		t = textinput.New()
-		t.Cursor.Style = cursorStyle
-		t.CharLimit = 32
-
-		switch i {
-		case 0:
-			t.Placeholder = "Title"
-			t.Focus()
-			t.PromptStyle = focusedStyle
-			t.TextStyle = focusedStyle
-		case 1:
-			t.Placeholder = "Content"
-			t.CharLimit = 64
-		}
-
-		a.inputs[i] = t
-	}
-
-	return a
+func initialModel() model {
+	return model{}
 }
 
-func (t todoApp) Init() tea.Cmd {
-	return textinput.Blink
+func (m model) Init() tea.Cmd {
+	return nil
 }
 
-func (t todoApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	case tea.WindowSizeMsg:
-		t.width = msg.Width
-		t.height = msg.Height
-
-	case []model.Todo:
-		t.todos = msg
-		return t, tea.Quit
-
 	case tea.KeyMsg:
-		if msg.Type == tea.KeyCtrlC {
-			return t, tea.Quit
+		switch msg.String() {
+		case "q", "ctrl+c":
+			return m, tea.Quit
 		}
+
+	case tea.WindowSizeMsg:
+		m.width = msg.Width - 7
+		m.height = msg.Height - 5
 	}
 
-	return t, nil
+	return m, nil
 }
 
-func (t todoApp) View() string {
-	var b strings.Builder
-
-	for i := range t.inputs {
-		b.WriteString(t.inputs[i].View())
-		if i < len(t.inputs)-1 {
-			b.WriteRune('\n')
-		}
+func (m model) View() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
 	}
-	return b.String()
+
+	footerHeight := 1
+	mainHeight := m.height - footerHeight
+
+	leftWidth := int(float64(m.width) * 0.2)
+	middleWidth := int(float64(m.width) * 0.4)
+	rightWidth := m.width - leftWidth - middleWidth
+
+	collections := borderStyle.
+		Width(leftWidth).
+		Height(m.height).
+		Render("Collections\n- api/auth\n- api/login")
+
+	request := borderStyle.
+		Width(middleWidth).
+		Height(mainHeight).
+		Render("POST https://url.com\n\nHeaders | Body\n\nHeaders:\nKey: Value\n\nBody:\n{\n  \"key\": \"value\"\n}")
+
+	response := borderStyle.
+		Width(rightWidth).
+		Height(mainHeight).
+		Render("Response\n200 OK\n\n{\n  \"field\": \"value\"\n}")
+
+	mainBody := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		request,
+		response,
+	)
+
+	footer := borderStyle.
+		Width(int(float64(m.width) * 0.8)).
+		Height(footerHeight).
+		Render("q: quit  |  tab: switch pane  |  enter: send request")
+
+	rightView := lipgloss.JoinVertical(
+		lipgloss.Left,
+		mainBody,
+		footer,
+	)
+
+	return lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		collections,
+		rightView,
+	)
 }
 
 func InitTeaApp(repo internal.Repository) {
-	todoApp := todoApp{
-		repo: repo,
-	}
+	p := tea.NewProgram(
+		initialModel(),
+		tea.WithAltScreen(),
+	)
 
-	p := tea.NewProgram(todoApp, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
